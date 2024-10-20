@@ -1,0 +1,17 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "online-dt"
+version = "0.1.0"
+dependencies = [
+    "gymnasium",
+    "imageio",
+    "mujoco",
+    "numpy",
+    "stable-baselines3",
+    "tensorboard",
+    "torch",
+    "transformers",
+]

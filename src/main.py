@@ -10,15 +10,14 @@ import argparse
 import pickle
 import random
 import time
-import gym
-import d4rl
+import gymnasium as gym
 import torch
 import numpy as np
+import stable_baselines3 as sb3
 
 import utils
 from replay_buffer import ReplayBuffer
 from lamb import Lamb
-from stable_baselines3.common.vec_env import SubprocVecEnv
 from pathlib import Path
 from data import create_dataloader
 from decision_transformer.models.decision_transformer import DecisionTransformer
@@ -34,7 +33,7 @@ class Experiment:
 
         self.state_dim, self.act_dim, self.action_range = self._get_env_spec(variant)
         self.offline_trajs, self.state_mean, self.state_std = self._load_dataset(
-            variant["env"]
+            variant["name_dataset"]
         )
         # initialize by offline trajs
         self.replay_buffer = ReplayBuffer(variant["replay_size"], self.offline_trajs)
@@ -86,7 +85,7 @@ class Experiment:
         self.online_iter = 0
         self.total_transitions_sampled = 0
         self.variant = variant
-        self.reward_scale = 1.0 if "antmaze" in variant["env"] else 0.001
+        self.reward_scale = 1.0 if "Antmaze" in variant["env"] else 0.001
         self.logger = Logger(variant)
 
     def _get_env_spec(self, variant):
@@ -387,8 +386,6 @@ class Experiment:
 
         utils.set_seed_everywhere(args.seed)
 
-        import d4rl
-
         def loss_fn(
             a_hat_dist,
             a,
@@ -409,18 +406,8 @@ class Experiment:
 
         def get_env_builder(seed, env_name, target_goal=None):
             def make_env_fn():
-                import d4rl
-
                 env = gym.make(env_name)
-                env.seed(seed)
-                if hasattr(env.env, "wrapped_env"):
-                    env.env.wrapped_env.seed(seed)
-                elif hasattr(env.env, "seed"):
-                    env.env.seed(seed)
-                else:
-                    pass
-                env.action_space.seed(seed)
-                env.observation_space.seed(seed)
+                env.reset(seed=seed)
 
                 if target_goal:
                     env.set_target_goal(target_goal)
@@ -431,14 +418,14 @@ class Experiment:
 
         print("\n\nMaking Eval Env.....")
         env_name = self.variant["env"]
-        if "antmaze" in env_name:
+        if "Antmaze" in env_name:
             env = gym.make(env_name)
             target_goal = env.target_goal
             env.close()
             print(f"Generated the fixed target goal: {target_goal}")
         else:
             target_goal = None
-        eval_envs = SubprocVecEnv(
+        eval_envs = sb3.common.vec_env.SubprocVecEnv(
             [
                 get_env_builder(i, env_name=env_name, target_goal=target_goal)
                 for i in range(self.variant["num_eval_episodes"])
@@ -451,7 +438,7 @@ class Experiment:
 
         if self.variant["max_online_iters"]:
             print("\n\nMaking Online Env.....")
-            online_envs = SubprocVecEnv(
+            online_envs = sb3.common.vec_env.SubprocVecEnv(
                 [
                     get_env_builder(i + 100, env_name=env_name, target_goal=target_goal)
                     for i in range(self.variant["num_online_rollouts"])
@@ -466,7 +453,8 @@ class Experiment:
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--seed", type=int, default=10)
-    parser.add_argument("--env", type=str, default="hopper-medium-v2")
+    parser.add_argument("--env", type=str, default="Hopper-v4")
+    parser.add_argument("--name_dataset", type=str, default="hopper-medium-v2")
 
     # model options
     parser.add_argument("--K", type=int, default=20)

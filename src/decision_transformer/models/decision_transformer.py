@@ -17,7 +17,6 @@ import torch.nn as nn
 import transformers
 
 from decision_transformer.models.model import TrajectoryModel
-from decision_transformer.models.trajectory_gpt2 import GPT2Model
 import math
 import numpy as np
 import torch.nn.functional as F
@@ -157,7 +156,7 @@ class DecisionTransformer(TrajectoryModel):
 
         # note: the only difference between this GPT2Model and the default Huggingface version
         # is that the positional embeddings are removed (since we'll add those ourselves)
-        self.transformer = GPT2Model(config)
+        self.transformer = transformers.GPT2Model(config)
 
         self.embed_timestep = nn.Embedding(max_ep_len, hidden_size)
         if ordering:
